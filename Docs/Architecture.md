@@ -511,6 +511,12 @@ directions, `./Scripts/Smoke-ContractWalk.ps1` for the complete survey circuit,
 `./Scripts/Screenshot-Tour.ps1 -ExtraArgs '-UEGT2CaptureLife'` for amenity use.
 Run `./Scripts/Fly-Soak.ps1 -Minutes 10` after changes to movement, population
 or performance. A screenshot or short test does not cover a sustained hitch.
+The packaged movement, screenshot, fly-soak and needs-reminders wrappers accept
+`-PackagedExecutable` when more than one archive exists under `LocalBuilds`;
+they require the real
+`Binaries\Win64\UEGT2.exe` and fail rather than choosing by executable
+timestamp. The fly soak rejects non-finite or non-positive durations before it
+launches the game.
 
 The survey walking diagnostic starts beside the board with one checked setup
 teleport, then uses mapped forward and interact keys along an explicit route.

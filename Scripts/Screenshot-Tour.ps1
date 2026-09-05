@@ -27,7 +27,8 @@ param(
     # Passed straight through to the game. -UEGT2Time=<hours> and
     # -UEGT2Weather=<name> render a specific sky; both freeze the day/night
     # cycle so the shot stays reproducible.
-    [string] $ExtraArgs
+    [string] $ExtraArgs,
+    [string] $PackagedExecutable
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,14 +40,25 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 # global shader library only exists after a cook.
 # Prefer the real binary under Binaries\Win64 over the staged launcher stub in
 # the archive root: Windows Application Control blocks the stub.
-$candidates = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'LocalBuilds') -Recurse -File `
-    -Filter 'UEGT2.exe' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
-if ($candidates.Count -eq 0) {
-    throw 'No packaged build found. Run ./Scripts/Package.ps1 first.'
+if ($PackagedExecutable) {
+    $resolvedExecutable = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PackagedExecutable)
+    if (-not (Test-Path -LiteralPath $resolvedExecutable -PathType Leaf) -or
+        $resolvedExecutable -notlike '*\Binaries\Win64\UEGT2.exe') {
+        throw 'PackagedExecutable must name the real Binaries\Win64\UEGT2.exe of a packaged build.'
+    }
+    $gameExe = (Get-Item -LiteralPath $resolvedExecutable).FullName
+} else {
+    $candidates = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'LocalBuilds') -Recurse -File `
+        -Filter 'UEGT2.exe' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -like '*\Binaries\Win64\UEGT2.exe' })
+    if ($candidates.Count -eq 0) {
+        throw 'No packaged build found. Run ./Scripts/Package.ps1 first.'
+    }
+    if ($candidates.Count -ne 1) {
+        throw 'Multiple packaged builds found. Select one with -PackagedExecutable.'
+    }
+    $gameExe = $candidates[0].FullName
 }
-$packaged = $candidates | Where-Object { $_.FullName -like '*\Binaries\Win64\UEGT2.exe' } | Select-Object -First 1
-if (-not $packaged) { $packaged = $candidates[0] }
-$gameExe = $packaged.FullName
 Write-Host "Using packaged build: $gameExe"
 
 if (-not $OutputDirectory) {

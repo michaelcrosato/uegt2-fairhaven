@@ -522,7 +522,15 @@ void UUEGT2CaptureSubsystem::BeginFlySoak()
 	}
 
 	PC->CloseMenu();
-	FlyLimitSeconds = GetFloatArg(TEXT("UEGT2SmokeMinutes="), 6.0f) * 60.0f;
+	const float RequestedMinutes = GetFloatArg(TEXT("UEGT2SmokeMinutes="), 6.0f);
+	FlyLimitSeconds = RequestedMinutes * 60.0f;
+	if (!FMath::IsFinite(RequestedMinutes) || RequestedMinutes <= 0.0f ||
+		!FMath::IsFinite(FlyLimitSeconds) || FlyLimitSeconds <= 0.0f)
+	{
+		UE_LOG(LogUEGT2Diag, Error, TEXT("UEGT2_FLY_SOAK_FAILED: SmokeMinutes must be finite and positive (got %.9g)."), RequestedMinutes);
+		FinishTour();
+		return;
+	}
 
 	// Exactly what a person does: dev mode, god, fly, and wind the speed up.
 	Dev->SetDevModeEnabled(true);

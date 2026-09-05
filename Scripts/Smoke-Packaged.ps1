@@ -11,17 +11,31 @@ no input is bound", which is what a missing DefaultInputComponentClass causes.
 param(
     [ValidateRange(1, 1440)]
     [int] $TimeoutMinutes = 10,
-    [double] $Delay = 12.0
+    [double] $Delay = 12.0,
+    [string] $PackagedExecutable
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$candidates = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'LocalBuilds') -Recurse -File `
-    -Filter 'UEGT2.exe' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
-$exe = $candidates | Where-Object { $_.FullName -like '*\Binaries\Win64\UEGT2.exe' } | Select-Object -First 1
-if (-not $exe) { throw 'No packaged build found. Run ./Scripts/Package.ps1 first.' }
+if ($PackagedExecutable) {
+    $resolvedExecutable = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PackagedExecutable)
+    if (-not (Test-Path -LiteralPath $resolvedExecutable -PathType Leaf) -or
+        $resolvedExecutable -notlike '*\Binaries\Win64\UEGT2.exe') {
+        throw 'PackagedExecutable must name the real Binaries\Win64\UEGT2.exe of a packaged build.'
+    }
+    $exe = Get-Item -LiteralPath $resolvedExecutable
+} else {
+    $candidates = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'LocalBuilds') -Recurse -File `
+        -Filter 'UEGT2.exe' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -like '*\Binaries\Win64\UEGT2.exe' })
+    if ($candidates.Count -eq 0) { throw 'No packaged build found. Run ./Scripts/Package.ps1 first.' }
+    if ($candidates.Count -ne 1) {
+        throw 'Multiple packaged builds found. Select one with -PackagedExecutable.'
+    }
+    $exe = $candidates[0]
+}
 
 $logDir = Join-Path $projectRoot 'Saved\Logs'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null

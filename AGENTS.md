@@ -46,6 +46,11 @@ python Tools/Terrain/generate_terrain.py        # re-roll terrain (+ PNG preview
 python Tools/Audio/generate_audio.py            # re-generate sounds
 ```
 
+When `LocalBuilds` contains more than one package, pass
+`-PackagedExecutable <path-to-Binaries\Win64\UEGT2.exe>` to the packaged
+smoke, screenshot, fly-soak or needs-reminders wrapper. They fail closed rather
+than selecting an archive from its executable timestamp.
+
 ## Verification, in order of how much it has actually caught
 
 1. **`-Target Both`.** The Game target rejects editor-only APIs the editor build

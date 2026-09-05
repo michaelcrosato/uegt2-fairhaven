@@ -119,6 +119,13 @@ function Invoke-ScriptCase {
         New-Item -ItemType Directory -Path (Join-Path $fixture.shotDirectory 'notes') | Out-Null
         Set-Content -LiteralPath (Join-Path $fixture.shotDirectory 'notes\review.txt') -Value 'keep me'
     }
+    if ($ScriptName -in @('Smoke-Packaged.ps1', 'Fly-Soak.ps1', 'Screenshot-Tour.ps1') -and
+        -not $Options.ContainsKey('AmbiguousPackage') -and
+        -not $Arguments.ContainsKey('PackagedExecutable')) {
+        # The normal cases name the intended archive explicitly. The separate
+        # ambiguity cases below prove that omitting it fails closed.
+        $Arguments.PackagedExecutable = Join-Path $newPackage 'UEGT2.exe'
+    }
     $failure = $null
     $processDirectory = [Environment]::CurrentDirectory
     try {
@@ -142,10 +149,10 @@ function Invoke-ScriptCase {
         Assert-True ($null -eq $failure) "${Name}: unexpected failure '$failure'."
     }
     if ($Options.ContainsKey('Timeout')) { Assert-True $fixture.stopped "${Name}: timeout left the process running." }
-    if ($ScriptName -eq 'Smoke-Packaged.ps1' -or $ScriptName -eq 'Fly-Soak.ps1') {
-        Assert-True ($fixture.launchedPath -eq (Join-Path $newPackage 'UEGT2.exe')) "${Name}: did not select the newest packaged binary."
+    if ($null -eq $failure -and $ScriptName -in @('Smoke-Packaged.ps1', 'Fly-Soak.ps1', 'Screenshot-Tour.ps1')) {
+        Assert-True ($fixture.launchedPath -eq (Join-Path $newPackage 'UEGT2.exe')) "${Name}: did not use the requested packaged binary."
     }
-    if ($ScriptName -eq 'Screenshot-Tour.ps1') {
+    if ($null -eq $failure -and $ScriptName -eq 'Screenshot-Tour.ps1') {
         Assert-True (Test-Path -LiteralPath (Join-Path $fixture.shotDirectory 'reference.png')) "${Name}: removed an unrelated image."
         Assert-True (Test-Path -LiteralPath (Join-Path $fixture.shotDirectory 'notes\review.txt')) "${Name}: removed unrelated documents."
         Assert-True (-not (Test-Path -LiteralPath (Join-Path $fixture.shotDirectory '01_Previous.png'))) "${Name}: retained stale capture evidence."
@@ -215,8 +222,10 @@ try {
 
     $walk = 'UEGT2_SMOKE_WALK_COMPLETE distance=400'
     Invoke-ScriptCase 'walk smoke succeeds' 'Smoke-Packaged.ps1' @{ Log = $walk }
+    Invoke-ScriptCase 'ambiguous walk package requires explicit path' 'Smoke-Packaged.ps1' @{ AmbiguousPackage = $true } 'Multiple packaged builds'
     Invoke-ScriptCase 'stale walk log is rejected' 'Smoke-Packaged.ps1' @{ StaleLog = $walk } 'produced no log'
     Invoke-ScriptCase 'walk crash overrides completion' 'Smoke-Packaged.ps1' @{ Log = $walk; ExitCode = 3 } 'exit code 3'
+    Invoke-ScriptCase 'non-positive fly duration is rejected' 'Fly-Soak.ps1' @{} 'finite positive number' -Arguments @{ Minutes = 0 }
     Invoke-ScriptCase 'fly crash overrides completion' 'Fly-Soak.ps1' @{ Log = 'UEGT2_FLY_SOAK_COMPLETE'; ExitCode = 4 } 'exit code 4'
     Invoke-ScriptCase 'fly soak succeeds' 'Fly-Soak.ps1' @{ Log = 'UEGT2_FLY_SOAK_COMPLETE' }
     Invoke-ScriptCase 'content crash overrides success marker' 'Build-Content.ps1' @{ Log = 'UEGT2_CONTENT_BUILD_SUCCEEDED'; ExitCode = 5 } 'exit code 5'
@@ -268,6 +277,7 @@ try {
 
     $tour = "Capture tour requested: 2 viewpoints`nUEGT2_CAPTURE_TOUR_COMPLETE (2 viewpoints)"
     Invoke-ScriptCase 'complete screenshot tour preserves unrelated files' 'Screenshot-Tour.ps1' @{ Log = $tour; Shots = 2 }
+    Invoke-ScriptCase 'ambiguous screenshot package requires explicit path' 'Screenshot-Tour.ps1' @{ AmbiguousPackage = $true } 'Multiple packaged builds'
     Invoke-ScriptCase 'capture relative output follows PowerShell location' 'Screenshot-Tour.ps1' @{ Log = $tour; Shots = 2 } -Arguments @{ OutputDirectory = 'capture output' } -FromCaseDirectory
     Assert-True ($fixture.launchedArguments -contains ('-UEGT2Capture="' + $fixture.shotDirectory.Replace('\', '/') + '"')) 'Capture output did not resolve against the requested PowerShell location.'
     Invoke-ScriptCase 'partial screenshot tour fails' 'Screenshot-Tour.ps1' @{ Log = $tour; Shots = 1 } 'expected 2'

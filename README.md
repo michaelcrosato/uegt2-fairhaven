@@ -98,6 +98,12 @@ LocalBuilds\Windows-Development\UEGT2\Binaries\Win64\UEGT2.exe
 Run that executable directly. (The launcher stub in the archive root can be
 blocked by Windows Application Control; the one under `Binaries\Win64` is not.)
 
+The packaged verification scripts require an unambiguous build. If
+`LocalBuilds` contains more than one archive, pass the intended real executable
+with `-PackagedExecutable <path>` to `Smoke-Packaged.ps1`, `Screenshot-Tour.ps1`,
+`Fly-Soak.ps1`, or `Smoke-NeedsReminders.ps1`; they refuse to guess from file
+timestamps. `Fly-Soak.ps1` also requires a finite, positive `-Minutes` value.
+
 **Controls** and **what to look at** are in
 [Docs/Playtest-0.1.md](Docs/Playtest-0.1.md). Read that before playing — it lists
 the known limits so you do not spend time reporting things already known.

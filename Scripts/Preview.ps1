@@ -41,4 +41,7 @@ if (-not $SkipPackage) {
 
 $tourArgs = @{ ResX = $ResX; ResY = $ResY; Delay = $Delay; Hold = $Hold }
 if ($Only) { $tourArgs['Only'] = $Only }
+# Package.ps1 writes the selected configuration to this stable archive path.
+# Pass it explicitly because LocalBuilds may also contain older archives.
+$tourArgs['PackagedExecutable'] = Join-Path $root '..\LocalBuilds\Windows-Development\UEGT2\Binaries\Win64\UEGT2.exe'
 & (Join-Path $root 'Screenshot-Tour.ps1') @tourArgs | Select-Object -Last 16
